@@ -2,21 +2,23 @@ import React, { Component } from 'react';
 import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 import * as THREE from 'three';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
+import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader.js';
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import Stats from 'three/examples/jsm/libs/stats.module.js';
 
 import $ from 'jquery';
 import { CSVLink } from 'react-csv';
 
-import '../static/Annotator.css';
+import './Annotator.css';
 import configs from '../configs.json';
 
 import PointService from '../services/PointService';
+
+import AddInfoPoint from './addInfoPoint';
+
 let pointService = PointService.getInstance();
 
 var camera, controls, scene, stats, renderer, loader, pointcloud;
-// var bboxHelperList = [];
 
 var raycaster = new THREE.Raycaster();
 raycaster.params.Points.threshold = 0.01;
@@ -34,28 +36,22 @@ var sphereMaterial = new THREE.MeshBasicMaterial({ color: '#FF0000' });
 var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 sphere.scale.set(1, 1, 1);
 
-function range(start, end) {
-  return new Array(end - start + 1)
-    .fill(undefined)
-    .map((_, i) => (i + start).toString());
-}
+const fids = configs['filenames'];
+let selected_fid = fids[0];
 
-const fids = range(configs['begin_fid'], configs['end_fid']);
-// const bboxes = fids;
-var selected_fid = fids[0];
-
-const frameFolder = configs['pcd_folder'] + '/' + configs['set_nm'];
-// const bboxFolder = settings["configs"]["bbox_folder"] + "/" + set_nm;
+const frameFolder = configs['pcd_folder'] + '/';
 
 class Annotator extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
+      showModal: false,
       loaded: 0,
       intrinsic: 0,
       extrinsic: 0,
       point: [],
+      selectedPoint: [],
       selected_keypoint_label: '',
       selected_keypoint_color: '#FFFFFF',
     };
@@ -87,8 +83,8 @@ class Annotator extends Component {
 
     camera = new THREE.PerspectiveCamera(65, width / height, 1, 1000);
     // camera = new THREE.OrthographicCamera( 5, -5, 3, 0, 1, 1000 );
-    camera.position.set(2, 2, 2);
-    camera.up.set(0, 0, 1);
+    camera.position.set(8, 4, 8);
+    camera.up.set(0, 1, 0);
 
     this.setState({
       intrinsic: this.cameraMatrix2npString(camera.projectionMatrix),
@@ -109,7 +105,7 @@ class Annotator extends Component {
     controls.minDistance = 1;
     controls.maxDistance = 500;
 
-    controls.maxPolarAngle = Math.PI / 2;
+    controls.maxPolarAngle = 2 * Math.PI;
 
     // point cloud
     this.addPointcloud();
@@ -161,20 +157,24 @@ class Annotator extends Component {
 
   addPointcloud = () => {
     pointcloud = new THREE.Points(new THREE.Geometry(), new THREE.Material());
-    loader = new OBJLoader();
+    loader = new PCDLoader();
     loader.load(
-      frameFolder + '/' + selected_fid + '.obj',
+      frameFolder + '/' + selected_fid + '.pcd',
       (points) => {
         pointcloud = points;
+        // if (points.material.color.r !== 1) {
+        //   points.material.color.setHex(0x000000);
+        // }
+        // points.material.size = 0.02;
         scene.add(pointcloud);
         pointclouds = [pointcloud];
+        const r = pointcloud.geometry.boundingSphere.radius;
+        camera.position.set(r * 1.5, r * 0.5, r * 1.5);
       },
       (xhr) => {
         this.setState({
           loaded: Math.round((xhr.loaded / xhr.total) * 100),
         });
-
-        // console.log( ( this.state.loaded ) + '% loaded' );
       }
     );
   };
@@ -189,6 +189,7 @@ class Annotator extends Component {
       object.geometry.dispose();
       object.material.dispose();
       scene.remove(object);
+      return null;
     });
     renderer.renderLists.dispose();
     sphereKps = [];
@@ -227,12 +228,6 @@ class Annotator extends Component {
     pointService.removeKeypointsByFrame(selected_fid);
     this.removeSphereKps();
   };
-
-  // removeBbox = () => {
-  //   for (var i = 0; i < bboxHelperList.length; i++) {
-  //     scene.remove( bboxHelperList[i] );
-  //   }
-  // }
 
   animate = () => {
     // console.log(camera.position.clone());
@@ -287,6 +282,10 @@ class Annotator extends Component {
   };
 
   onMouseClick = (e) => {
+    if (e.shiftKey) {
+      this.showModal(this.state.point);
+    }
+
     if (e.shiftKey && this.state.selected_keypoint_label !== '') {
       pointService.addKeypoint(
         selected_fid,
@@ -317,10 +316,6 @@ class Annotator extends Component {
         });
         scene.add(sphereKp);
       }
-
-      console.log(scene.children);
-
-      console.log(pointService.getKeypoints());
     }
   };
 
@@ -331,7 +326,7 @@ class Annotator extends Component {
   };
 
   onKeyPress = (e) => {
-    var points = scene.getObjectByName(selected_fid + '.obj');
+    var points = scene.getObjectByName(selected_fid + '.pcd');
     switch (e.keyCode) {
       case 43: // +
         console.log(points.material.size);
@@ -343,44 +338,44 @@ class Annotator extends Component {
         points.material.size /= 1.2;
         points.material.needsUpdate = true;
         break;
-      case 99: // c
-        points.material.color.setHex(Math.random() * 0xffffff);
-        points.material.needsUpdate = true;
-        break;
-      case 100: // d
-        if (fids.indexOf(selected_fid) + 1 < fids.length) {
-          selected_fid = fids[fids.indexOf(selected_fid) + 1];
-          this.onFrameUpdate();
+      // case 99: // c
+      //   points.material.color.setHex(Math.random() * 0xffffff);
+      //   points.material.needsUpdate = true;
+      //   break;
+      // case 100: // d
+      //   if (fids.indexOf(selected_fid) + 1 < fids.length) {
+      //     selected_fid = fids[fids.indexOf(selected_fid) + 1];
+      //     this.onFrameUpdate();
 
-          if (pointService.findMarkedFrame(selected_fid) !== -1) {
-            $('.alert-success').show();
-          } else {
-            $('.alert-success').hide();
-          }
-        }
-        break;
-      case 97: // a
-        if (fids.indexOf(selected_fid) - 1 > -1) {
-          selected_fid = fids[fids.indexOf(selected_fid) - 1];
-          this.onFrameUpdate();
+      //     if (pointService.findMarkedFrame(selected_fid) !== -1) {
+      //       $('.alert-success').show();
+      //     } else {
+      //       $('.alert-success').hide();
+      //     }
+      //   }
+      //   break;
+      // case 97: // a
+      //   if (fids.indexOf(selected_fid) - 1 > -1) {
+      //     selected_fid = fids[fids.indexOf(selected_fid) - 1];
+      //     this.onFrameUpdate();
 
-          if (pointService.findMarkedFrame(selected_fid) !== -1) {
-            $('.alert-success').show();
-          } else {
-            $('.alert-success').hide();
-          }
-        }
-        break;
-      case 102: // f
-        var idx = pointService.findMarkedFrame(selected_fid);
-        if (idx === -1) {
-          pointService.addMarkedFrame(selected_fid);
-          $('.alert-success').show();
-        } else {
-          pointService.removeMarkedFrame(selected_fid);
-          $('.alert-success').hide();
-        }
-        break;
+      //     if (pointService.findMarkedFrame(selected_fid) !== -1) {
+      //       $('.alert-success').show();
+      //     } else {
+      //       $('.alert-success').hide();
+      //     }
+      //   }
+      //   break;
+      // case 102: // f
+      //   var idx = pointService.findMarkedFrame(selected_fid);
+      //   if (idx === -1) {
+      //     pointService.addMarkedFrame(selected_fid);
+      //     $('.alert-success').show();
+      //   } else {
+      //     pointService.removeMarkedFrame(selected_fid);
+      //     $('.alert-success').hide();
+      //   }
+      //   break;
       default:
         break;
     }
@@ -413,6 +408,57 @@ class Annotator extends Component {
     }
   };
 
+  //////// infopoint tool ///////
+  showModal = (point) => {
+    this.setState({
+      showModal: true,
+      selectedPoint: point,
+    });
+  };
+
+  handleOk = (e) => {
+    // aggiungo un infopoint
+    console.log(e);
+
+    pointService.addKeypoint(selected_fid, e.titolo, this.state.selectedPoint);
+
+    var found = false;
+    var sphereKp;
+    for (const pair of sphereKps) {
+      console.log(pair);
+      if (pair.keypoint_label === e.titolo) {
+        sphereKp = scene.getObjectByProperty('uuid', pair.uuid);
+        sphereKp.position.copy(this.state.point);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      var sphereKpGeometry = new THREE.SphereBufferGeometry(0.04, 32, 32);
+      var sphereKpMaterial = new THREE.MeshBasicMaterial({
+        color: this.state.selected_keypoint_color,
+      });
+      sphereKp = new THREE.Mesh(sphereKpGeometry, sphereKpMaterial);
+      sphereKp.position.copy(this.state.point);
+      sphereKps.push({
+        uuid: sphereKp.uuid,
+        keypoint_label: e.titolo,
+      });
+      scene.add(sphereKp);
+    }
+
+    this.setState({
+      showModal: false,
+    });
+  };
+
+  handleCancel = (e) => {
+    this.setState({
+      showModal: false,
+    });
+  };
+  /////////////////
+
   render() {
     return (
       <div className='contain-fluid'>
@@ -422,20 +468,12 @@ class Annotator extends Component {
           style={{ height: 0.1 * window.innerHeight }}
         >
           <div className='col'>
-            <div>
-              <b>Point Cloud Annotator</b>
-            </div>
-            <div>Suning Commerce R&D Center USA</div>
-            <div>Applied AI Lab</div>
-            <div>
-              <a
-                href='https://zexihan.com'
-                target='_blank'
-                rel='noopener noreferrer'
-              >
-                Zexi Han
-              </a>
-            </div>
+            <AddInfoPoint
+              handleCancel={this.handleCancel}
+              handleOk={this.handleOk}
+              visible={this.state.showModal}
+              point={this.state.selectedPoint}
+            ></AddInfoPoint>
           </div>
           <div className='col'></div>
           <div className='col'></div>
@@ -589,9 +627,3 @@ class Annotator extends Component {
 }
 
 export default Annotator;
-
-//   <div className="my-2 p-2" id="matrices">
-//     <div>{"Mint = " + this.state.intrinsic}</div>
-//     <br />
-//     <div>{"Mext = " + this.state.extrinsic}</div>
-//   </div>

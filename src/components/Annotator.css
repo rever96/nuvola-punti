@@ -1,0 +1,75 @@
+html,
+body {
+  overflow: hidden;
+}
+
+a,
+a:hover {
+  color: #bb86fc;
+}
+
+.alert-info {
+  background-color: #2a2a2a;
+  color: #e2e2e2;
+  border-style: none;
+}
+
+.alert-success {
+  height: 5%;
+  line-height: 5%;
+  text-align: center;
+}
+
+.btn {
+  font-size: 12px;
+}
+
+#top {
+  background-color: #121212;
+  color: #e2e2e2;
+  font-size: 12px;
+}
+
+#center {
+  z-index: 1;
+}
+
+#right {
+  background-color: #121212;
+  color: #e2e2e2;
+  font-size: 12px;
+  border-style: solid;
+  border-top-color: #2a2a2a;
+  border-bottom-color: #2a2a2a;
+}
+
+#bottom {
+  background-color: #121212;
+  color: #e2e2e2;
+  font-size: 12px;
+}
+
+#matrices {
+  background-color: #2a2a2a;
+  border-radius: 5px;
+  font-size: 80%;
+}
+
+.list-group {
+  max-height: 300px;
+  margin-bottom: 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.col {
+  flex-basis: 0;
+  flex-grow: 1;
+  min-width: unset;
+  max-width: 100%;
+}
+
+button {
+  position: absolute;
+  display: block;
+}

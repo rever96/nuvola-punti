@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
 import { BrowserRouter, Route } from 'react-router-dom';
-import configs from './configs.json';
 import data from './assets/infopoints.json';
 
 import Annotator from './components/Annotator';
@@ -12,11 +11,11 @@ class RouterBoard extends Component {
       <div>
         <BrowserRouter>
           <div>
-            <Route
+            {/* <Route
               exact
               path='/'
               render={() => <Visualizator infoPoints={data['0']} />}
-            />
+            /> */}
             <Route
               exact
               path='/builder'

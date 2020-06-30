@@ -1,10 +1,15 @@
 {
   "build": false,
   "set_nm": "person",
-  "begin_fid": 0,
-  "end_fid": 6,
-  "pcd_folder": "./data/pcd",
-  "bbox_folder": "./data/bbox",
+  "filenames": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5
+  ],
+  "pcd_folder": "./data/pointclouds",
   "keypoints_folder": "./data/keypoints",
   "keypoints": [
     {
