@@ -1,10 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import 'antd/dist/antd.css';
+import './main.css';
 
-import 'bootstrap/dist/css/bootstrap.css';
-import 'bootstrap/dist/js/bootstrap.bundle.min';
+import Annotator from './components/Annotator';
 
-import RouterBoard from './RouterBoard';
-
-ReactDOM.render(<RouterBoard />, document.getElementById('root'));
+ReactDOM.render(<Annotator />, document.getElementById('root'));

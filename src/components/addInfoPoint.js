@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, Form, Input, Button, Checkbox } from 'antd';
+import ColorPicker from './ColorPicker';
 
 const layout = {
   labelCol: { span: 8 },
@@ -13,6 +14,13 @@ class App extends React.Component {
   constructor(props) {
     super(props);
   }
+  formRef = React.createRef();
+
+  changeColor = (value) => {
+    this.formRef.current.setFieldsValue({
+      colore: value,
+    });
+  };
 
   onFinish = (values) => {
     this.props.handleOk(values);
@@ -24,7 +32,7 @@ class App extends React.Component {
 
   render() {
     return (
-      <div>
+      <div onMouseMove={(e) => e.stopPropagation()}>
         <Modal
           title='Basic Modal'
           visible={this.props.visible}
@@ -39,6 +47,7 @@ class App extends React.Component {
                 {...layout}
                 name='basic'
                 initialValues={{ remember: true }}
+                ref={this.formRef}
                 onFinish={this.onFinish}
                 onFinishFailed={this.onFinishFailed}
               >
@@ -48,6 +57,10 @@ class App extends React.Component {
                   rules={[{ required: true, message: 'Campo obbligatorio!' }]}
                 >
                   <Input />
+                </Form.Item>
+
+                <Form.Item label='Colore' name='colore'>
+                  <ColorPicker changeColor={this.changeColor}></ColorPicker>
                 </Form.Item>
 
                 <Form.Item label='Descrizione' name='descrizione'>

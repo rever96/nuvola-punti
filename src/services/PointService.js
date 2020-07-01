@@ -1,3 +1,5 @@
+import configs from '../configs.json';
+
 class PointService {
   static myInstance = null;
   static getInstance() {
@@ -7,49 +9,60 @@ class PointService {
     return this.myInstance;
   }
 
-  marked_frames = [];
   keypoints = {};
 
-  // marked_frames
-  addMarkedFrame = (fid) => {
-    this.marked_frames.push([fid]);
-    console.log(fid + ' added!');
-    console.log(this.markedFrames);
+  //todo promise
+  loadPoints = (filename) => {
+    fetch(configs.infopoints_folder + '/' + filename + '.json')
+      .then((response) => response.json())
+      .then((data) => {
+        this.keypoints = data;
+      });
   };
 
-  removeMarkedFrame = (fid) => {
-    var idx = this.findMarkedFrame(fid);
-    this.marked_frames.splice(idx, 1);
-    console.log(fid + ' removed!');
-    console.log(this.marked_frames);
-  };
-
-  getMarkedFrames = () => {
-    return this.marked_frames;
-  };
-
-  findMarkedFrame = (fid) => {
-    var idx = -1;
-    for (var i = 0; i < this.marked_frames.length; i++)
-      if (this.marked_frames[i][0] === fid) idx = i;
-    return idx;
+  savePoints = (filename) => {
+    if (!this.keypoints) {
+      return;
+    }
+    let contentType = 'application/json;charset=utf-8;';
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+      var blob = new Blob(
+        [decodeURIComponent(encodeURI(JSON.stringify(this.keypoints)))],
+        { type: contentType }
+      );
+      navigator.msSaveOrOpenBlob(blob, filename);
+    } else {
+      var a = document.createElement('a');
+      a.download = filename;
+      a.href =
+        'data:' +
+        contentType +
+        ',' +
+        encodeURIComponent(JSON.stringify(this.keypoints));
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
   };
 
   // keypoints
-  addKeypoint = (fid, keypoint_label, point) => {
-    if (typeof this.keypoints[fid] === 'undefined') {
-      this.keypoints[fid] = {};
-    }
-    console.log(point);
-    this.keypoints[fid][keypoint_label] = point;
+  addInfoPoint = (info, point) => {
+    const infopoint = {
+      descrizione: info.descrizione,
+      colore: info.colore || '#ffffff',
+      point,
+    };
+    this.keypoints[info.titolo] = infopoint;
+    return infopoint;
   };
 
-  getKeypoints = () => {
+  getInfoPoints = () => {
     return this.keypoints;
   };
 
-  removeKeypointsByFrame = (fid) => {
-    delete this.keypoints[fid];
+  removeKeypoints = () => {
+    delete this.keypoints;
   };
 }
 

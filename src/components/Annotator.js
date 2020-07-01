@@ -4,21 +4,24 @@ import { CopyToClipboard } from 'react-copy-to-clipboard';
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader.js';
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import Stats from 'three/examples/jsm/libs/stats.module.js';
 
 import $ from 'jquery';
-import { CSVLink } from 'react-csv';
 
-import './Annotator.css';
 import configs from '../configs.json';
 
 import PointService from '../services/PointService';
 
 import AddInfoPoint from './addInfoPoint';
 
+import ColorPicker from './ColorPicker';
+
+import { Row, Col, Button, Select, Typography, Space } from 'antd';
+
+const { Option } = Select;
+
 let pointService = PointService.getInstance();
 
-var camera, controls, scene, stats, renderer, loader, pointcloud;
+var camera, controls, scene, renderer, loader, pointcloud;
 
 var raycaster = new THREE.Raycaster();
 raycaster.params.Points.threshold = 0.01;
@@ -78,9 +81,6 @@ class Annotator extends Component {
     renderer.dofAutofocus = true;
     this.mount.appendChild(renderer.domElement);
 
-    console.log(this.mount.clientWidth);
-    console.log(window.innerWidth);
-
     camera = new THREE.PerspectiveCamera(65, width / height, 1, 1000);
     // camera = new THREE.OrthographicCamera( 5, -5, 3, 0, 1, 1000 );
     camera.position.set(8, 4, 8);
@@ -110,15 +110,9 @@ class Annotator extends Component {
     // point cloud
     this.addPointcloud();
 
-    // bbox
-    // this.addBbox();
-
     // axis
     var axesHelper = new THREE.AxesHelper(5);
     scene.add(axesHelper);
-
-    // stats
-    stats = new Stats();
 
     // sphere
     scene.add(sphere);
@@ -196,7 +190,11 @@ class Annotator extends Component {
   };
 
   showSphereKps = () => {
-    const keypoints = pointService.getKeypoints();
+    //todo .then
+    pointService.loadPoints(selected_fid);
+
+    //in progress
+    const keypoints = pointService.getInfoPoints();
     if (typeof keypoints[selected_fid] !== 'undefined') {
       console.log('existed');
 
@@ -208,6 +206,8 @@ class Annotator extends Component {
             var keypoint_color = keypoint.color;
           }
         }
+
+        const dist = camera.position.distanceTo();
         var sphereKpGeometry = new THREE.SphereBufferGeometry(0.04, 32, 32);
         var sphereKpMaterial = new THREE.MeshBasicMaterial({
           color: keypoint_color,
@@ -223,26 +223,13 @@ class Annotator extends Component {
     }
   };
 
-  clearCurFrameKps = () => {
-    console.log('clear');
-    pointService.removeKeypointsByFrame(selected_fid);
-    this.removeSphereKps();
-  };
-
   animate = () => {
-    // console.log(camera.position.clone());
-
     this.setState({
       intrinsic: this.cameraMatrix2npString(camera.projectionMatrix),
       extrinsic: this.cameraMatrix2npString(camera.matrixWorldInverse),
     });
-
     requestAnimationFrame(this.animate);
-
     controls.update();
-
-    stats.update();
-
     this.renderScene();
   };
 
@@ -278,44 +265,11 @@ class Annotator extends Component {
     mouse.y =
       -((e.clientY - 0.1 * window.innerHeight) / this.mount.clientHeight) * 2 +
       1;
-    console.log();
   };
 
   onMouseClick = (e) => {
-    if (e.shiftKey) {
+    if (e.shiftKey && this.state.point.x) {
       this.showModal(this.state.point);
-    }
-
-    if (e.shiftKey && this.state.selected_keypoint_label !== '') {
-      pointService.addKeypoint(
-        selected_fid,
-        this.state.selected_keypoint_label,
-        this.state.point
-      );
-
-      var found = false;
-      var sphereKp;
-      for (const pair of sphereKps) {
-        if (pair.keypoint_label === this.state.selected_keypoint_label) {
-          sphereKp = scene.getObjectByProperty('uuid', pair.uuid);
-          sphereKp.position.copy(this.state.point);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        var sphereKpGeometry = new THREE.SphereBufferGeometry(0.04, 32, 32);
-        var sphereKpMaterial = new THREE.MeshBasicMaterial({
-          color: this.state.selected_keypoint_color,
-        });
-        sphereKp = new THREE.Mesh(sphereKpGeometry, sphereKpMaterial);
-        sphereKp.position.copy(this.state.point);
-        sphereKps.push({
-          uuid: sphereKp.uuid,
-          keypoint_label: this.state.selected_keypoint_label,
-        });
-        scene.add(sphereKp);
-      }
     }
   };
 
@@ -342,59 +296,20 @@ class Annotator extends Component {
       //   points.material.color.setHex(Math.random() * 0xffffff);
       //   points.material.needsUpdate = true;
       //   break;
-      // case 100: // d
-      //   if (fids.indexOf(selected_fid) + 1 < fids.length) {
-      //     selected_fid = fids[fids.indexOf(selected_fid) + 1];
-      //     this.onFrameUpdate();
-
-      //     if (pointService.findMarkedFrame(selected_fid) !== -1) {
-      //       $('.alert-success').show();
-      //     } else {
-      //       $('.alert-success').hide();
-      //     }
-      //   }
-      //   break;
-      // case 97: // a
-      //   if (fids.indexOf(selected_fid) - 1 > -1) {
-      //     selected_fid = fids[fids.indexOf(selected_fid) - 1];
-      //     this.onFrameUpdate();
-
-      //     if (pointService.findMarkedFrame(selected_fid) !== -1) {
-      //       $('.alert-success').show();
-      //     } else {
-      //       $('.alert-success').hide();
-      //     }
-      //   }
-      //   break;
-      // case 102: // f
-      //   var idx = pointService.findMarkedFrame(selected_fid);
-      //   if (idx === -1) {
-      //     pointService.addMarkedFrame(selected_fid);
-      //     $('.alert-success').show();
-      //   } else {
-      //     pointService.removeMarkedFrame(selected_fid);
-      //     $('.alert-success').hide();
-      //   }
-      //   break;
       default:
         break;
     }
   };
 
   onFrameUpdate = (e) => {
-    if (typeof e !== 'undefined') {
-      selected_fid = e.target.id;
-      console.log(selected_fid);
+    if (e == selected_fid) {
+      return;
     }
-
+    selected_fid = e;
     this.removePointcloud();
     this.removeSphereKps();
-    // this.removeBbox();
-
     this.showSphereKps();
-
     this.addPointcloud();
-    // this.addBbox();
   };
 
   handleKeypointChange = (e) => {
@@ -416,11 +331,11 @@ class Annotator extends Component {
     });
   };
 
+  // aggiungo un infopoint
   handleOk = (e) => {
-    // aggiungo un infopoint
     console.log(e);
 
-    pointService.addKeypoint(selected_fid, e.titolo, this.state.selectedPoint);
+    const ip = pointService.addInfoPoint(e, this.state.selectedPoint);
 
     var found = false;
     var sphereKp;
@@ -436,10 +351,10 @@ class Annotator extends Component {
     if (!found) {
       var sphereKpGeometry = new THREE.SphereBufferGeometry(0.04, 32, 32);
       var sphereKpMaterial = new THREE.MeshBasicMaterial({
-        color: this.state.selected_keypoint_color,
+        color: ip.colore,
       });
       sphereKp = new THREE.Mesh(sphereKpGeometry, sphereKpMaterial);
-      sphereKp.position.copy(this.state.point);
+      sphereKp.position.copy(ip.point);
       sphereKps.push({
         uuid: sphereKp.uuid,
         keypoint_label: e.titolo,
@@ -461,166 +376,67 @@ class Annotator extends Component {
 
   render() {
     return (
-      <div className='contain-fluid'>
-        <div
-          id='top'
-          className='row p-2'
-          style={{ height: 0.1 * window.innerHeight }}
+      <div>
+        <AddInfoPoint
+          handleCancel={this.handleCancel}
+          handleOk={this.handleOk}
+          visible={this.state.showModal}
+          point={this.state.selectedPoint}
+        ></AddInfoPoint>
+        <Row
+          style={{
+            height: '100vh',
+            width: '100vw',
+            backgroundColor: '#404040',
+          }}
         >
-          <div className='col'>
-            <AddInfoPoint
-              handleCancel={this.handleCancel}
-              handleOk={this.handleOk}
-              visible={this.state.showModal}
-              point={this.state.selectedPoint}
-            ></AddInfoPoint>
-          </div>
-          <div className='col'></div>
-          <div className='col'></div>
-          <div className='col'>
-            <div className='row mr-1 justify-content-end'>
-              <CSVLink
-                className='btn btn-dark'
-                data={pointService.getMarkedFrames()}
-                enclosingCharacter={``}
-                filename={'marks_' + configs['set_nm'] + '.txt'}
-              >
-                Download marks
-              </CSVLink>
-            </div>
-            <div className='row my-2 mr-1 justify-content-end'>
-              <CopyToClipboard
-                text={JSON.stringify(pointService.getKeypoints(), null, 2)}
-                onCopy={this.onCopy}
-              >
-                <button className='btn btn-dark'>
-                  Copy keypoints to clipboard
-                </button>
-              </CopyToClipboard>
-            </div>
-          </div>
-        </div>
-        <div className='row'>
-          <div
-            id='center'
-            className='col'
-            style={{
-              width: 0.75 * window.innerWidth,
-              height: 0.85 * window.innerHeight,
-            }}
-            ref={(mount) => {
-              this.mount = mount;
-            }}
-          />
-          <div
-            id='right'
-            className='col'
-            style={{
-              width: 0.25 * window.innerWidth,
-              height: 0.85 * window.innerHeight,
-            }}
-          >
-            <div className='row m-2 alert alert-info'>
-              <strong>
-                {configs['set_nm']} {selected_fid}
-              </strong>
-            </div>
-
-            <br />
-
-            <div className='row m-2'>
-              <legend className='col-sm-3 p-0 col-form-label '>Frames</legend>
+          <Col style={{ width: 0.75 * window.innerWidth }}>
+            <Row style={{ height: 0.1 * window.innerHeight }}>
+              <Button>Salva InfoPoint</Button>
+            </Row>
+            <Row style={{ height: 0.85 * window.innerHeight }}>
               <div
-                className='col-sm-9 p-0 list-group'
-                id='list-tab'
-                role='tablist'
-              >
-                {fids.map((fid, i) => (
-                  <a
-                    key={i}
-                    className={`list-group-item px-2 py-1 list-group-item-action ${
-                      fid === selected_fid ? 'active' : ''
-                    }`}
-                    id={fid}
-                    data-toggle='list'
-                    href={`#list-${fid}`}
-                    onClick={this.onFrameUpdate}
-                  >
-                    {fid}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <br />
-
-            <fieldset className='row m-2 form-group'>
-              <div className='row'>
-                <legend className='col-sm-3 col-form-label'>Keypoints</legend>
-                <div className='col-sm-9'>
-                  {configs['keypoints'].map((keypoint, i) => (
-                    <div className='form-check' key={i}>
-                      <input
-                        className='form-check-input'
-                        type='radio'
-                        name='gridRadios'
-                        id={keypoint.label}
-                        value={keypoint.label}
-                        defaultChecked={(i = 0 ? true : false)}
-                        onChange={this.handleKeypointChange}
-                      />
-                      <label
-                        className='form-check-label'
-                        htmlFor={keypoint.label}
-                        onChange={this.handleKeypointChange}
-                      >
-                        {keypoint.label}&nbsp;&nbsp;
-                        <svg width='10' height='10'>
-                          <rect
-                            width='10'
-                            height='10'
-                            style={{ fill: keypoint.color }}
-                          />
-                        </svg>
-                      </label>
-                    </div>
+                ref={(mount) => {
+                  this.mount = mount;
+                }}
+              ></div>
+            </Row>
+            <Row style={{ height: 0.05 * window.innerHeight }}>
+              <Space direction='horizontal'>
+                <Typography.Text style={{ color: 'red' }}>
+                  x: {this.state.point.x ? this.state.point.x.toFixed(4) : 0}
+                </Typography.Text>
+                <Typography.Text style={{ color: 'lime' }}>
+                  y: {this.state.point.y ? this.state.point.y.toFixed(4) : 0}
+                </Typography.Text>
+                <Typography.Text style={{ color: 'blue' }}>
+                  z: {this.state.point.z ? this.state.point.z.toFixed(4) : 0}
+                </Typography.Text>
+              </Space>
+            </Row>
+          </Col>
+          <Col flex={5}>
+            <Row>
+              <Space direction='horizontal'>
+                <Typography.Text style={{ color: 'white', fontSize: '2em' }}>
+                  Nuvola:
+                </Typography.Text>
+                <Select
+                  defaultValue={selected_fid}
+                  style={{ width: 120 }}
+                  onChange={this.onFrameUpdate}
+                >
+                  {fids.map((fid, i) => (
+                    <Option key={i} value={fid}>
+                      {fid}
+                    </Option>
                   ))}
-                  <button
-                    className='btn mt-2 btn-dark'
-                    onClick={this.clearCurFrameKps}
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-            </fieldset>
-          </div>
-        </div>
-
-        <div
-          id='bottom'
-          className='row p-2'
-          style={{ height: 0.05 * window.innerHeight }}
-        >
-          <div className='col'>
-            <p>
-              <font style={{ color: 'red' }}>x</font>:{' '}
-              {this.state.point.x ? this.state.point.x.toFixed(4) : 0}
-              &nbsp; <font style={{ color: 'lime' }}>y</font>:{' '}
-              {this.state.point.y ? this.state.point.y.toFixed(4) : 0}
-              &nbsp; <font style={{ color: 'blue' }}>z</font>:{' '}
-              {this.state.point.z ? this.state.point.z.toFixed(4) : 0}
-            </p>
-          </div>
-          <div className='col alert alert-success' role='alert'>
-            Marked!
-          </div>
-          <div className='col'>
-            {this.state.loaded !== 100 && (
-              <div>{this.state.loaded}% loaded</div>
-            )}
-          </div>
-        </div>
+                </Select>
+              </Space>
+            </Row>
+            <Row>lista infopoints</Row>
+          </Col>
+        </Row>
       </div>
     );
   }
