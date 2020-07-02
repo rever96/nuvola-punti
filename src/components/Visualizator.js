@@ -10,7 +10,8 @@ import configs from '../configs.json';
 
 import PointService from '../services/PointService';
 
-// import { Tooltip } from 'antd';
+import { Card } from 'antd';
+import { Vector3 } from 'three';
 
 let pointService = PointService.getInstance();
 
@@ -25,14 +26,21 @@ var pointclouds;
 var clock = new THREE.Clock();
 var toggle = 0;
 
-// var canvas1, context1, texture1, sprite1; //per il tooltip
-
 var sphereKps = []; // array of {uuid, titolo}
 
 const fids = configs['filenames'];
 let selected_fid = fids[1];
 
 const frameFolder = configs['pcd_folder'] + '/';
+
+//tooltip
+let activeInfoPoint = null;
+var divStyle = {
+  position: 'absolute',
+  display: 'none',
+  left: '0px',
+  top: '0px',
+};
 
 function onDocumentMouseDown(event) {
   event.preventDefault();
@@ -48,12 +56,12 @@ function onDocumentMouseDown(event) {
       infoPoint.point.y,
       infoPoint.point.z
     );
+    // camera.lookAt(infoPoint.point.x, infoPoint.point.y, infoPoint.point.z);
   }
 }
 
 function onDocumentMouseOver(event) {
   event.preventDefault();
-  // sprite1.position.set(event.clientX, event.clientY - 20, 0);
   mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
   mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
@@ -61,25 +69,16 @@ function onDocumentMouseOver(event) {
   let o = intersects.find((i) => i && i.object && i.object.info);
   if (o) {
     o = o.object;
-    const infoPoint = o.info;
-
-    //tooltip
-    // // store color of closest object (for later restoration)
-    // o.currentHex = o.material.color.getHex();
-    // // set a new color for closest object
-    // o.material.color.setHex(0xffff00);
-
-    // context1.clearRect(0, 0, 640, 480);
-    // var message = infoPoint.titolo;
-    // var metrics = context1.measureText(message);
-    // var width = metrics.width;
-    // context1.fillStyle = 'rgba(0,0,0,0.95)'; // black border
-    // context1.fillRect(0, 0, width + 8, 20 + 8);
-    // context1.fillStyle = 'rgba(255,255,255,0.95)'; // white filler
-    // context1.fillRect(2, 2, width + 4, 20 + 4);
-    // context1.fillStyle = 'rgba(0,0,0,1)'; // text color
-    // context1.fillText(message, 4, 20);
-    // texture1.needsUpdate = true;
+    if (!activeInfoPoint) {
+      divStyle = {
+        position: 'absolute',
+        left: event.clientX,
+        top: event.clientY,
+      };
+      activeInfoPoint = o.info;
+    }
+  } else {
+    activeInfoPoint = null;
   }
 }
 
@@ -143,29 +142,6 @@ class Visualizzator extends Component {
     //carico gli oggetti da file
     this.addPointcloud();
     this.addSphereInfo();
-
-    //tooltip
-    // canvas1 = document.createElement('canvas');
-    // context1 = canvas1.getContext('2d');
-    // context1.font = 'Bold 20px Arial';
-    // context1.fillStyle = 'rgba(0,0,0,0.95)';
-    // context1.fillText('Hello, world!', 0, 20);
-
-    // // canvas contents will be used for a texture
-    // texture1 = new THREE.Texture(canvas1);
-    // texture1.needsUpdate = true;
-
-    // ////////////////////////////////////////
-
-    // var spriteMaterial = new THREE.SpriteMaterial({
-    //   map: texture1,
-    //   color: 0xffffff,
-    // });
-
-    // sprite1 = new THREE.Sprite(spriteMaterial);
-    // sprite1.scale.set(200, 100, 1.0);
-    // sprite1.position.set(50, 50, 0);
-    // scene.add(sprite1);
   };
 
   cameraMatrix2npString = (cameraMatrix) => {
@@ -239,7 +215,6 @@ class Visualizzator extends Component {
         console.log(infopoints);
         Object.keys(infopoints).forEach((titolo) => {
           const dist = camera.position.distanceTo(infopoints[titolo].point);
-          console.log(dist);
           const sphereKpGeometry = new THREE.SphereBufferGeometry(
             dist / 32,
             32,
@@ -267,11 +242,25 @@ class Visualizzator extends Component {
       intrinsic: this.cameraMatrix2npString(camera.projectionMatrix),
       extrinsic: this.cameraMatrix2npString(camera.matrixWorldInverse),
     });
+    this.reDrawInfoPoint();
     requestAnimationFrame(this.animate);
     controls.update();
     camera.updateMatrixWorld();
     toggle += clock.getDelta();
     renderer.render(scene, camera);
+  };
+
+  reDrawInfoPoint = () => {
+    sphereKps.forEach((pair) => {
+      const object = scene.getObjectByProperty('uuid', pair.uuid);
+      const dist = camera.position.distanceTo(object.position);
+      const sphereKpGeometry = new THREE.SphereBufferGeometry(
+        dist / 32,
+        32,
+        32
+      );
+      object.geometry = sphereKpGeometry;
+    });
   };
 
   onWindowResize = () => {
@@ -304,12 +293,20 @@ class Visualizzator extends Component {
 
   render() {
     return (
-      <div
-        style={{ width: window.innerWidth, height: window.innerHeight }}
-        ref={(mount) => {
-          this.mount = mount;
-        }}
-      ></div>
+      <>
+        {activeInfoPoint && (
+          <Card size='small' title={activeInfoPoint.titolo} style={divStyle}>
+            <p>{activeInfoPoint.descrizione}</p>
+          </Card>
+        )}
+
+        <div
+          style={{ width: window.innerWidth, height: window.innerHeight }}
+          ref={(mount) => {
+            this.mount = mount;
+          }}
+        ></div>
+      </>
     );
   }
 }
