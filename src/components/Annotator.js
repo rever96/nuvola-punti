@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import { CopyToClipboard } from 'react-copy-to-clipboard';
 
 import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader.js';
@@ -13,9 +12,8 @@ import PointService from '../services/PointService';
 
 import AddInfoPoint from './addInfoPoint';
 
-import ColorPicker from './ColorPicker';
-
 import { Row, Col, Button, Select, Typography, Space } from 'antd';
+import { PlusOutlined, MinusOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 
@@ -32,7 +30,7 @@ var pointclouds;
 var clock = new THREE.Clock();
 var toggle = 0;
 
-var sphereKps = []; // array of {uuid, keypoint_label}
+var sphereKps = []; // array of {uuid, titolo}
 
 var sphereGeometry = new THREE.SphereBufferGeometry(0.04, 32, 32);
 var sphereMaterial = new THREE.MeshBasicMaterial({ color: '#FF0000' });
@@ -55,8 +53,6 @@ class Annotator extends Component {
       extrinsic: 0,
       point: [],
       selectedPoint: [],
-      selected_keypoint_label: '',
-      selected_keypoint_color: '#FFFFFF',
     };
   }
 
@@ -64,6 +60,12 @@ class Annotator extends Component {
     this.init();
 
     this.animate();
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize');
+    window.removeEventListener('mousemove');
+    window.removeEventListener('click');
   }
 
   init = () => {
@@ -109,6 +111,7 @@ class Annotator extends Component {
 
     // point cloud
     this.addPointcloud();
+    this.addSphereInfo();
 
     // axis
     var axesHelper = new THREE.AxesHelper(5);
@@ -118,8 +121,6 @@ class Annotator extends Component {
     scene.add(sphere);
 
     window.addEventListener('resize', this.onWindowResize, false);
-
-    window.addEventListener('keypress', this.onKeyPress);
 
     window.addEventListener('mousemove', this.onMouseMove, false);
 
@@ -178,49 +179,44 @@ class Annotator extends Component {
   };
 
   removeSphereKps = () => {
-    sphereKps.map((pair) => {
+    sphereKps.forEach((pair) => {
       const object = scene.getObjectByProperty('uuid', pair.uuid);
       object.geometry.dispose();
       object.material.dispose();
       scene.remove(object);
-      return null;
     });
     renderer.renderLists.dispose();
     sphereKps = [];
   };
 
-  showSphereKps = () => {
-    //todo .then
-    pointService.loadPoints(selected_fid);
-
-    //in progress
-    const keypoints = pointService.getInfoPoints();
-    if (typeof keypoints[selected_fid] !== 'undefined') {
-      console.log('existed');
-
-      var keypoint_labels = Object.keys(keypoints[selected_fid]);
-
-      for (const keypoint_label of keypoint_labels) {
-        for (const keypoint of configs['keypoints']) {
-          if (keypoint.label === keypoint_label) {
-            var keypoint_color = keypoint.color;
-          }
-        }
-
-        const dist = camera.position.distanceTo();
-        var sphereKpGeometry = new THREE.SphereBufferGeometry(0.04, 32, 32);
-        var sphereKpMaterial = new THREE.MeshBasicMaterial({
-          color: keypoint_color,
+  addSphereInfo = () => {
+    pointService
+      .loadPoints(selected_fid)
+      .catch((err) => {
+        console.log(err);
+      })
+      .then((infopoints) => {
+        console.log(infopoints);
+        Object.keys(infopoints).forEach((titolo) => {
+          const dist = camera.position.distanceTo(infopoints[titolo].point);
+          console.log(dist);
+          const sphereKpGeometry = new THREE.SphereBufferGeometry(
+            dist / 32,
+            32,
+            32
+          );
+          const sphereKpMaterial = new THREE.MeshBasicMaterial({
+            color: infopoints[titolo].colore,
+          });
+          const sphereKp = new THREE.Mesh(sphereKpGeometry, sphereKpMaterial);
+          sphereKp.position.copy(infopoints[titolo].point);
+          sphereKps.push({
+            uuid: sphereKp.uuid,
+            titolo: titolo,
+          });
+          scene.add(sphereKp);
         });
-        var sphereKp = new THREE.Mesh(sphereKpGeometry, sphereKpMaterial);
-        sphereKp.position.copy(keypoints[selected_fid][keypoint_label]);
-        sphereKps.push({
-          uuid: sphereKp.uuid,
-          keypoint_label: keypoint_label,
-        });
-        scene.add(sphereKp);
-      }
-    }
+      });
   };
 
   animate = () => {
@@ -279,26 +275,15 @@ class Annotator extends Component {
     renderer.setSize(0.75 * window.innerWidth, 0.85 * window.innerHeight);
   };
 
-  onKeyPress = (e) => {
+  scaleDown = () => {
     var points = scene.getObjectByName(selected_fid + '.pcd');
-    switch (e.keyCode) {
-      case 43: // +
-        console.log(points.material.size);
-        points.material.size *= 1.2;
-        points.material.needsUpdate = true;
-        break;
-      case 45: // -
-        console.log(points.material.size);
-        points.material.size /= 1.2;
-        points.material.needsUpdate = true;
-        break;
-      // case 99: // c
-      //   points.material.color.setHex(Math.random() * 0xffffff);
-      //   points.material.needsUpdate = true;
-      //   break;
-      default:
-        break;
-    }
+    points.material.size *= 0.8;
+    points.material.needsUpdate = true;
+  };
+  scaleUp = () => {
+    var points = scene.getObjectByName(selected_fid + '.pcd');
+    points.material.size *= 1.2;
+    points.material.needsUpdate = true;
   };
 
   onFrameUpdate = (e) => {
@@ -306,21 +291,10 @@ class Annotator extends Component {
       return;
     }
     selected_fid = e;
-    this.removePointcloud();
     this.removeSphereKps();
-    this.showSphereKps();
+    this.removePointcloud();
     this.addPointcloud();
-  };
-
-  handleKeypointChange = (e) => {
-    const keypoint_label = e.target.value;
-    this.setState({ selected_keypoint_label: keypoint_label });
-    console.log(keypoint_label);
-    for (const keypoint of configs['keypoints']) {
-      if (keypoint.label === keypoint_label) {
-        this.setState({ selected_keypoint_color: keypoint.color });
-      }
-    }
+    this.addSphereInfo();
   };
 
   //////// infopoint tool ///////
@@ -341,7 +315,7 @@ class Annotator extends Component {
     var sphereKp;
     for (const pair of sphereKps) {
       console.log(pair);
-      if (pair.keypoint_label === e.titolo) {
+      if (pair.titolo === e.titolo) {
         sphereKp = scene.getObjectByProperty('uuid', pair.uuid);
         sphereKp.position.copy(this.state.point);
         found = true;
@@ -357,7 +331,7 @@ class Annotator extends Component {
       sphereKp.position.copy(ip.point);
       sphereKps.push({
         uuid: sphereKp.uuid,
-        keypoint_label: e.titolo,
+        titolo: e.titolo,
       });
       scene.add(sphereKp);
     }
@@ -392,7 +366,15 @@ class Annotator extends Component {
         >
           <Col style={{ width: 0.75 * window.innerWidth }}>
             <Row style={{ height: 0.1 * window.innerHeight }}>
-              <Button>Salva InfoPoint</Button>
+              <Button onClick={() => pointService.savePoints(selected_fid)}>
+                Salva InfoPoint
+              </Button>
+              <Button onClick={this.scaleUp}>
+                <PlusOutlined />
+              </Button>
+              <Button onClick={this.scaleDown}>
+                <MinusOutlined />
+              </Button>
             </Row>
             <Row style={{ height: 0.85 * window.innerHeight }}>
               <div

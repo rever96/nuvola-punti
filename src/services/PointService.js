@@ -9,25 +9,29 @@ class PointService {
     return this.myInstance;
   }
 
-  keypoints = {};
-
-  //todo promise
   loadPoints = (filename) => {
-    fetch(configs.infopoints_folder + '/' + filename + '.json')
-      .then((response) => response.json())
-      .then((data) => {
-        this.keypoints = data;
-      });
+    delete this.infoPoints;
+    this.infoPoints = {};
+
+    return new Promise((resolve, reject) => {
+      fetch(configs.infopoints_folder + '/' + filename + '.json')
+        .catch((err) => reject(err))
+        .then((response) => response.json())
+        .then((data) => {
+          this.infoPoints = data;
+          resolve(this.infoPoints);
+        });
+    });
   };
 
   savePoints = (filename) => {
-    if (!this.keypoints) {
+    if (!this.infoPoints) {
       return;
     }
     let contentType = 'application/json;charset=utf-8;';
     if (window.navigator && window.navigator.msSaveOrOpenBlob) {
       var blob = new Blob(
-        [decodeURIComponent(encodeURI(JSON.stringify(this.keypoints)))],
+        [decodeURIComponent(encodeURI(JSON.stringify(this.infoPoints)))],
         { type: contentType }
       );
       navigator.msSaveOrOpenBlob(blob, filename);
@@ -38,7 +42,7 @@ class PointService {
         'data:' +
         contentType +
         ',' +
-        encodeURIComponent(JSON.stringify(this.keypoints));
+        encodeURIComponent(JSON.stringify(this.infoPoints));
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
@@ -46,23 +50,15 @@ class PointService {
     }
   };
 
-  // keypoints
+  // infoPoints
   addInfoPoint = (info, point) => {
     const infopoint = {
       descrizione: info.descrizione,
       colore: info.colore || '#ffffff',
       point,
     };
-    this.keypoints[info.titolo] = infopoint;
+    this.infoPoints[info.titolo] = infopoint;
     return infopoint;
-  };
-
-  getInfoPoints = () => {
-    return this.keypoints;
-  };
-
-  removeKeypoints = () => {
-    delete this.keypoints;
   };
 }
 

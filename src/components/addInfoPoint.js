@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Form, Input, Button, Checkbox } from 'antd';
+import { Modal, Form, Input, Button } from 'antd';
 import ColorPicker from './ColorPicker';
 
 const layout = {
@@ -11,9 +11,6 @@ const tailLayout = {
 };
 
 class App extends React.Component {
-  constructor(props) {
-    super(props);
-  }
   formRef = React.createRef();
 
   changeColor = (value) => {
