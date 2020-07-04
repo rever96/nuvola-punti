@@ -34,7 +34,11 @@ let selected_fid = fids[1];
 const frameFolder = configs['pcd_folder'] + '/';
 
 //tooltip
-let activeInfoPoint = null;
+let activeInfoPoint = null,
+  moveVector = null,
+  movePoint = null;
+
+let prevTime = 0;
 var divStyle = {
   position: 'absolute',
   display: 'none',
@@ -50,13 +54,20 @@ function onDocumentMouseDown(event) {
   const intersects = raycaster.intersectObjects(scene.children);
   const infoPoint = intersects.find((i) => i && i.object && i.object.info);
   if (infoPoint) {
-    console.log(infoPoint);
-    camera.position.set(
-      infoPoint.point.x,
-      infoPoint.point.y,
-      infoPoint.point.z
-    );
-    // camera.lookAt(infoPoint.point.x, infoPoint.point.y, infoPoint.point.z);
+    // camera.position.set(
+    //   infoPoint.point.x,
+    //   infoPoint.point.y,
+    //   infoPoint.point.z
+    // );
+    movePoint = infoPoint.point;
+    const a = camera.position;
+    const b = movePoint;
+    moveVector = new Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+    // const dist = camera.position.distanceTo(movePoint);
+
+    // camera.translateX(dist);
+
+    // camera.lookAt(movePoint.x, movePoint.y, movePoint.z);
   }
 }
 
@@ -243,10 +254,26 @@ class Visualizzator extends Component {
       extrinsic: this.cameraMatrix2npString(camera.matrixWorldInverse),
     });
     this.reDrawInfoPoint();
+
     requestAnimationFrame(this.animate);
     controls.update();
     camera.updateMatrixWorld();
     toggle += clock.getDelta();
+
+    var time = performance.now();
+
+    if (moveVector) {
+      var delta = (time - prevTime) / 1000;
+      camera.position.x += moveVector.x * delta;
+      camera.position.y += moveVector.y * delta;
+      camera.position.z += moveVector.z * delta;
+      if (camera.position.distanceTo(movePoint) < 4) {
+        moveVector = null;
+        camera.lookAt(movePoint);
+      }
+    }
+    prevTime = time;
+
     renderer.render(scene, camera);
   };
 
