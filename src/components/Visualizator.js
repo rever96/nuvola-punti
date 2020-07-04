@@ -4,8 +4,6 @@ import * as THREE from 'three';
 import { PCDLoader } from 'three/examples/jsm/loaders/PCDLoader.js';
 import { MapControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
-import $ from 'jquery';
-
 import configs from '../configs.json';
 
 import PointService from '../services/PointService';
@@ -21,22 +19,12 @@ var raycaster = new THREE.Raycaster();
 raycaster.params.Points.threshold = 0.01;
 var mouse = new THREE.Vector2();
 
-var pointclouds;
-
-var clock = new THREE.Clock();
-var toggle = 0;
-
 var sphereKps = []; // array of {uuid, titolo}
 
 const fids = configs['filenames'];
 let selected_fid = fids[1];
 
 const frameFolder = configs['pcd_folder'] + '/';
-
-//tooltip
-let activeInfoPoint = null,
-  moveVector = null,
-  movePoint = null;
 
 let prevTime = 0;
 var divStyle = {
@@ -46,75 +34,31 @@ var divStyle = {
   top: '0px',
 };
 
-function onDocumentMouseDown(event) {
-  event.preventDefault();
-  mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
-  mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(scene.children);
-  const infoPoint = intersects.find((i) => i && i.object && i.object.info);
-  if (infoPoint) {
-    // camera.position.set(
-    //   infoPoint.point.x,
-    //   infoPoint.point.y,
-    //   infoPoint.point.z
-    // );
-    movePoint = infoPoint.point;
-    const a = camera.position;
-    const b = movePoint;
-    moveVector = new Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
-    // const dist = camera.position.distanceTo(movePoint);
-
-    // camera.translateX(dist);
-
-    // camera.lookAt(movePoint.x, movePoint.y, movePoint.z);
-  }
-}
-
-function onDocumentMouseOver(event) {
-  event.preventDefault();
-  mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
-  mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(scene.children);
-  let o = intersects.find((i) => i && i.object && i.object.info);
-  if (o) {
-    o = o.object;
-    if (!activeInfoPoint) {
-      divStyle = {
-        position: 'absolute',
-        left: event.clientX,
-        top: event.clientY,
-      };
-      activeInfoPoint = o.info;
-    }
-  } else {
-    activeInfoPoint = null;
-  }
-}
-
 class Visualizzator extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
       loaded: 0,
-      intrinsic: 0,
-      extrinsic: 0,
+      activeInfoPoint: null,
+      movePoint: null,
+      moveVector: null,
     };
   }
 
   componentDidMount() {
     this.init();
     window.addEventListener('resize', this.onWindowResize, false);
-    window.addEventListener('click', onDocumentMouseDown, false);
-    window.addEventListener('mousemove', onDocumentMouseOver, false);
+    window.addEventListener('click', this.onDocumentMouseClick, false);
+    window.addEventListener('mousemove', this.onDocumentMouseOver, false);
+    window.addEventListener('mousedown', this.onDocumentMouseDown, false);
     this.animate();
   }
 
   componentWillUnmount() {
     window.removeEventListener('resize');
     window.removeEventListener('mousemove');
+    window.removeEventListener('mousedown');
     window.removeEventListener('click');
   }
 
@@ -134,11 +78,6 @@ class Visualizzator extends Component {
     camera = new THREE.PerspectiveCamera(65, width / height, 1, 1000);
     camera.up.set(0, 1, 0);
 
-    this.setState({
-      intrinsic: this.cameraMatrix2npString(camera.projectionMatrix),
-      extrinsic: this.cameraMatrix2npString(camera.matrixWorldInverse),
-    });
-
     controls = new MapControls(camera, renderer.domElement);
 
     //controls.addEventListener( 'change', render ); // call this only in static scenes (i.e., if there is no animation loop)
@@ -155,27 +94,53 @@ class Visualizzator extends Component {
     this.addSphereInfo();
   };
 
-  cameraMatrix2npString = (cameraMatrix) => {
-    var npString = 'np.array([';
-    for (var i = 0; i < 4; i++) {
-      npString += '[';
-      for (var j = 0; j < 4; j++) {
-        var pos = i * 4 + j;
-        npString +=
-          cameraMatrix.elements[pos] === 0
-            ? cameraMatrix.elements[pos]
-            : cameraMatrix.elements[pos].toFixed(4);
-        if (j !== 3) {
-          npString += ', ';
-        }
-      }
-      npString += ']';
-      if (i !== 3) {
-        npString += ', ';
-      }
+  onDocumentMouseClick = (event) => {
+    event.preventDefault();
+    mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children);
+    const infoPoint = intersects.find((i) => i && i.object && i.object.info);
+    if (infoPoint) {
+      const a = camera.position;
+      const b = infoPoint.point;
+      this.setState({
+        movePoint: infoPoint.point,
+        moveVector: new Vector3(b.x - a.x, b.y - a.y, b.z - a.z),
+      });
     }
-    npString += '])';
-    return npString;
+  };
+
+  onDocumentMouseDown = (e) => {
+    this.setState({
+      movePoint: null,
+    });
+  };
+
+  onDocumentMouseOver = (event) => {
+    event.preventDefault();
+    mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+    mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children);
+    let o = intersects.find((i) => i && i.object && i.object.info);
+    if (o) {
+      o = o.object;
+      if (!this.state.activeInfoPoint) {
+        divStyle = {
+          position: 'absolute',
+          left: event.clientX,
+          top: event.clientY,
+        };
+        this.setState({
+          activeInfoPoint: o.info,
+        });
+      }
+    } else {
+      this.setState({
+        activeInfoPoint: null,
+      });
+    }
   };
 
   addPointcloud = () => {
@@ -188,9 +153,8 @@ class Visualizzator extends Component {
         // if (points.material.color.r !== 1) {
         //   points.material.color.setHex(0x000000);
         // }
-        // points.material.size = 0.02;
+        points.material.size = 0.02;
         scene.add(pointcloud);
-        pointclouds = [pointcloud];
         const r = pointcloud.geometry.boundingSphere.radius;
         camera.position.set(r * 1.5, r * 0.5, r * 1.5);
       },
@@ -223,7 +187,6 @@ class Visualizzator extends Component {
         console.log(err);
       })
       .then((infopoints) => {
-        console.log(infopoints);
         Object.keys(infopoints).forEach((titolo) => {
           const dist = camera.position.distanceTo(infopoints[titolo].point);
           const sphereKpGeometry = new THREE.SphereBufferGeometry(
@@ -249,30 +212,30 @@ class Visualizzator extends Component {
       });
   };
   animate = () => {
-    this.setState({
-      intrinsic: this.cameraMatrix2npString(camera.projectionMatrix),
-      extrinsic: this.cameraMatrix2npString(camera.matrixWorldInverse),
-    });
     this.reDrawInfoPoint();
 
     requestAnimationFrame(this.animate);
     controls.update();
     camera.updateMatrixWorld();
-    toggle += clock.getDelta();
 
     var time = performance.now();
 
-    if (moveVector) {
+    if (this.state.moveVector) {
       var delta = (time - prevTime) / 1000;
-      camera.position.x += moveVector.x * delta;
-      camera.position.y += moveVector.y * delta;
-      camera.position.z += moveVector.z * delta;
-      if (camera.position.distanceTo(movePoint) < 4) {
-        moveVector = null;
-        camera.lookAt(movePoint);
+      camera.position.x += this.state.moveVector.x * delta;
+      camera.position.y += this.state.moveVector.y * delta;
+      camera.position.z += this.state.moveVector.z * delta;
+      if (camera.position.distanceTo(this.state.movePoint) < 4) {
+        this.setState({
+          moveVector: null,
+        });
       }
     }
     prevTime = time;
+
+    if (this.state.movePoint) {
+      camera.lookAt(this.state.movePoint);
+    }
 
     renderer.render(scene, camera);
   };
@@ -308,7 +271,7 @@ class Visualizzator extends Component {
   };
 
   onFrameUpdate = (e) => {
-    if (e == selected_fid) {
+    if (e === selected_fid) {
       return;
     }
     selected_fid = e;
@@ -321,9 +284,13 @@ class Visualizzator extends Component {
   render() {
     return (
       <>
-        {activeInfoPoint && (
-          <Card size='small' title={activeInfoPoint.titolo} style={divStyle}>
-            <p>{activeInfoPoint.descrizione}</p>
+        {this.state.activeInfoPoint && (
+          <Card
+            size='small'
+            title={this.state.activeInfoPoint.titolo}
+            style={divStyle}
+          >
+            <p>{this.state.activeInfoPoint.descrizione}</p>
           </Card>
         )}
 
