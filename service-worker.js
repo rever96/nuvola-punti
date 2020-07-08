@@ -14,7 +14,7 @@
 importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
 
 importScripts(
-  "/nuvola-punti/precache-manifest.9d8f1352875b2d17063380c032f2cd48.js"
+  "/nuvola-punti/precache-manifest.340fa466bbd780238ca8e8ed4f98d387.js"
 );
 
 self.addEventListener('message', (event) => {
