@@ -11,10 +11,12 @@
  * See https://goo.gl/2aRDsh
  */
 
-importScripts("https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js");
+importScripts(
+  'https://storage.googleapis.com/workbox-cdn/releases/4.3.1/workbox-sw.js'
+);
 
 importScripts(
-  "/nuvola-punti/precache-manifest.340fa466bbd780238ca8e8ed4f98d387.js"
+  '/nuvola-punti/builder/precache-manifest.340fa466bbd780238ca8e8ed4f98d387.js'
 );
 
 self.addEventListener('message', (event) => {
@@ -33,7 +35,9 @@ workbox.core.clientsClaim();
 self.__precacheManifest = [].concat(self.__precacheManifest || []);
 workbox.precaching.precacheAndRoute(self.__precacheManifest, {});
 
-workbox.routing.registerNavigationRoute(workbox.precaching.getCacheKeyForURL("/nuvola-punti/index.html"), {
-  
-  blacklist: [/^\/_/,/\/[^\/?]+\.[^\/]+$/],
-});
+workbox.routing.registerNavigationRoute(
+  workbox.precaching.getCacheKeyForURL('/nuvola-punti/builder/index.html'),
+  {
+    blacklist: [/^\/_/, /\/[^\/?]+\.[^\/]+$/],
+  }
+);
