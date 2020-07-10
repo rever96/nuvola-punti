@@ -1,25 +1,25 @@
 {
   "files": {
-    "main.css": "/nuvola-punti/builder/static/css/main.f25c5fea.chunk.css",
-    "main.js": "/nuvola-punti/builder/static/js/main.c983e1fc.chunk.js",
-    "main.js.map": "/nuvola-punti/builder/static/js/main.c983e1fc.chunk.js.map",
-    "runtime-main.js": "/nuvola-punti/builder/static/js/runtime-main.2eba8eff.js",
-    "runtime-main.js.map": "/nuvola-punti/builder/static/js/runtime-main.2eba8eff.js.map",
-    "static/css/2.c27a359e.chunk.css": "/nuvola-punti/builder/static/css/2.c27a359e.chunk.css",
-    "static/js/2.7b24de01.chunk.js": "/nuvola-punti/builder/static/js/2.7b24de01.chunk.js",
-    "static/js/2.7b24de01.chunk.js.map": "/nuvola-punti/builder/static/js/2.7b24de01.chunk.js.map",
-    "index.html": "/nuvola-punti/builder/index.html",
-    "precache-manifest.340fa466bbd780238ca8e8ed4f98d387.js": "/nuvola-punti/builder/precache-manifest.340fa466bbd780238ca8e8ed4f98d387.js",
-    "service-worker.js": "/nuvola-punti/builder/service-worker.js",
-    "static/css/2.c27a359e.chunk.css.map": "/nuvola-punti/builder/static/css/2.c27a359e.chunk.css.map",
-    "static/css/main.f25c5fea.chunk.css.map": "/nuvola-punti/builder/static/css/main.f25c5fea.chunk.css.map",
-    "static/js/2.7b24de01.chunk.js.LICENSE.txt": "/nuvola-punti/builder/static/js/2.7b24de01.chunk.js.LICENSE.txt"
+    "main.css": "/nuvola-punti/static/css/main.f25c5fea.chunk.css",
+    "main.js": "/nuvola-punti/static/js/main.d7817b80.chunk.js",
+    "main.js.map": "/nuvola-punti/static/js/main.d7817b80.chunk.js.map",
+    "runtime-main.js": "/nuvola-punti/static/js/runtime-main.2eba8eff.js",
+    "runtime-main.js.map": "/nuvola-punti/static/js/runtime-main.2eba8eff.js.map",
+    "static/css/2.9edc93b8.chunk.css": "/nuvola-punti/static/css/2.9edc93b8.chunk.css",
+    "static/js/2.3e913dba.chunk.js": "/nuvola-punti/static/js/2.3e913dba.chunk.js",
+    "static/js/2.3e913dba.chunk.js.map": "/nuvola-punti/static/js/2.3e913dba.chunk.js.map",
+    "index.html": "/nuvola-punti/index.html",
+    "precache-manifest.0fb2984b5e523ed21cdfb3b4a8a0b755.js": "/nuvola-punti/precache-manifest.0fb2984b5e523ed21cdfb3b4a8a0b755.js",
+    "service-worker.js": "/nuvola-punti/service-worker.js",
+    "static/css/2.9edc93b8.chunk.css.map": "/nuvola-punti/static/css/2.9edc93b8.chunk.css.map",
+    "static/css/main.f25c5fea.chunk.css.map": "/nuvola-punti/static/css/main.f25c5fea.chunk.css.map",
+    "static/js/2.3e913dba.chunk.js.LICENSE.txt": "/nuvola-punti/static/js/2.3e913dba.chunk.js.LICENSE.txt"
   },
   "entrypoints": [
     "static/js/runtime-main.2eba8eff.js",
-    "static/css/2.c27a359e.chunk.css",
-    "static/js/2.7b24de01.chunk.js",
+    "static/css/2.9edc93b8.chunk.css",
+    "static/js/2.3e913dba.chunk.js",
     "static/css/main.f25c5fea.chunk.css",
-    "static/js/main.c983e1fc.chunk.js"
+    "static/js/main.d7817b80.chunk.js"
   ]
 }
