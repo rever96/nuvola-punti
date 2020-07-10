@@ -12,17 +12,12 @@ class PointService {
     this.infoPoints = {};
 
     return new Promise((resolve, reject) => {
-      fetch(
-        process.env.PUBLIC_URL +
-          '/assets/infopoints/' +
-          '/' +
-          filename +
-          '.json'
-      )
+      fetch(process.env.PUBLIC_URL + '/assets/infopoints/' + filename + '.json')
         .catch((err) => reject(err))
         .then((response) => response.json())
         .then((data) => {
           this.infoPoints = data;
+          console.log(this.infoPoints);
           resolve(this.infoPoints);
         });
     });
