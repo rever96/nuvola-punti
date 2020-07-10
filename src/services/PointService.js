@@ -1,5 +1,3 @@
-import configs from '../configs.json';
-
 class PointService {
   static myInstance = null;
   static getInstance() {
@@ -14,7 +12,13 @@ class PointService {
     this.infoPoints = {};
 
     return new Promise((resolve, reject) => {
-      fetch(configs.infopoints_folder + '/' + filename + '.json')
+      fetch(
+        process.env.PUBLIC_URL +
+          '/assets/infopoints/' +
+          '/' +
+          filename +
+          '.json'
+      )
         .catch((err) => reject(err))
         .then((response) => response.json())
         .then((data) => {

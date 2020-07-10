@@ -6,8 +6,6 @@ import { MapControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 import $ from 'jquery';
 
-import configs from '../configs.json';
-
 import PointService from '../services/PointService';
 
 import AddInfoPoint from './addInfoPoint';
@@ -37,10 +35,7 @@ var sphereMaterial = new THREE.MeshBasicMaterial({ color: '#FF0000' });
 var sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
 sphere.scale.set(1, 1, 1);
 
-const fids = configs['filenames'];
-let selected_fid = fids[0];
-
-const frameFolder = configs['pcd_folder'] + '/';
+const frameFolder = process.env.PUBLIC_URL + '/assets/pointclouds/';
 
 class Annotator extends Component {
   constructor(props) {
@@ -53,13 +48,31 @@ class Annotator extends Component {
       extrinsic: 0,
       point: [],
       selectedPoint: [],
+      impostazioniJson: null,
+      frame: '',
     };
+
+    fetch('assets/impostazioni.json', {
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    })
+      .then((r) => r.json())
+      .then((impostazioniJson) => {
+        this.setState({
+          impostazioniJson,
+          frame: impostazioniJson.filenames[0],
+        });
+        this.init();
+        this.animate();
+      });
   }
 
   componentDidMount() {
-    this.init();
-
-    this.animate();
+    window.addEventListener('resize', this.onWindowResize, false);
+    window.addEventListener('mousemove', this.onMouseMove, false);
+    window.addEventListener('click', this.onMouseClick, false);
   }
 
   componentWillUnmount() {
@@ -119,12 +132,6 @@ class Annotator extends Component {
 
     // sphere
     scene.add(sphere);
-
-    window.addEventListener('resize', this.onWindowResize, false);
-
-    window.addEventListener('mousemove', this.onMouseMove, false);
-
-    window.addEventListener('click', this.onMouseClick, false);
   };
 
   cameraMatrix2npString = (cameraMatrix) => {
@@ -154,7 +161,7 @@ class Annotator extends Component {
     pointcloud = new THREE.Points(new THREE.Geometry(), new THREE.Material());
     loader = new PCDLoader();
     loader.load(
-      frameFolder + '/' + selected_fid + '.pcd',
+      frameFolder + this.state.frame + '.pcd',
       (points) => {
         pointcloud = points;
         // if (points.material.color.r !== 1) {
@@ -191,15 +198,13 @@ class Annotator extends Component {
 
   addSphereInfo = () => {
     pointService
-      .loadPoints(selected_fid)
+      .loadPoints(this.state.frame)
       .catch((err) => {
         console.log(err);
       })
       .then((infopoints) => {
-        console.log(infopoints);
         Object.keys(infopoints).forEach((titolo) => {
           const dist = camera.position.distanceTo(infopoints[titolo].point);
-          console.log(dist);
           const sphereKpGeometry = new THREE.SphereBufferGeometry(
             dist / 32,
             32,
@@ -276,21 +281,21 @@ class Annotator extends Component {
   };
 
   scaleDown = () => {
-    var points = scene.getObjectByName(selected_fid + '.pcd');
+    var points = scene.getObjectByName(this.state.frame + '.pcd');
     points.material.size *= 0.8;
     points.material.needsUpdate = true;
   };
   scaleUp = () => {
-    var points = scene.getObjectByName(selected_fid + '.pcd');
+    var points = scene.getObjectByName(this.state.frame + '.pcd');
     points.material.size *= 1.2;
     points.material.needsUpdate = true;
   };
 
   onFrameUpdate = (e) => {
-    if (e == selected_fid) {
+    if (e == this.state.frame) {
       return;
     }
-    selected_fid = e;
+    this.state.frame = e;
     this.removeSphereKps();
     this.removePointcloud();
     this.addPointcloud();
@@ -307,14 +312,11 @@ class Annotator extends Component {
 
   // aggiungo un infopoint
   handleOk = (e) => {
-    console.log(e);
-
     const ip = pointService.addInfoPoint(e, this.state.selectedPoint);
 
     var found = false;
     var sphereKp;
     for (const pair of sphereKps) {
-      console.log(pair);
       if (pair.titolo === e.titolo) {
         sphereKp = scene.getObjectByProperty('uuid', pair.uuid);
         sphereKp.position.copy(this.state.point);
@@ -366,7 +368,7 @@ class Annotator extends Component {
         >
           <Col style={{ width: 0.75 * window.innerWidth }}>
             <Row style={{ height: 0.1 * window.innerHeight }}>
-              <Button onClick={() => pointService.savePoints(selected_fid)}>
+              <Button onClick={() => pointService.savePoints(this.state.frame)}>
                 Salva InfoPoint
               </Button>
               <Button onClick={this.scaleUp}>
@@ -398,25 +400,27 @@ class Annotator extends Component {
             </Row>
           </Col>
           <Col flex={5}>
-            <Row>
-              <Space direction='horizontal'>
-                <Typography.Text style={{ color: 'white', fontSize: '2em' }}>
-                  Nuvola:
-                </Typography.Text>
-                <Select
-                  defaultValue={selected_fid}
-                  style={{ width: 120 }}
-                  onChange={this.onFrameUpdate}
-                >
-                  {fids.map((fid, i) => (
-                    <Option key={i} value={fid}>
-                      {fid}
-                    </Option>
-                  ))}
-                </Select>
-              </Space>
-            </Row>
-            <Row>lista infopoints</Row>
+            {this.state.impostazioniJson && (
+              <Row>
+                <Space direction='horizontal'>
+                  <Typography.Text style={{ color: 'white', fontSize: '2em' }}>
+                    Nuvola:
+                  </Typography.Text>
+                  <Select
+                    defaultValue={this.state.frame}
+                    style={{ width: 120 }}
+                    onChange={this.onFrameUpdate}
+                  >
+                    {this.state.impostazioniJson.filenames.map((fid, i) => (
+                      <Option key={i} value={fid}>
+                        {fid}
+                      </Option>
+                    ))}
+                  </Select>
+                </Space>
+              </Row>
+            )}
+            {/* <Row>lista infopoints</Row> */}
           </Col>
         </Row>
       </div>
